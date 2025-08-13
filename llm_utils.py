@@ -10,7 +10,14 @@ _service_instances = {}
 # A list of supported models that can be exported and used elsewhere. visit https://docs.litellm.ai/docs/providers for more providers.
 
 
-SUPPORTED_MODELS = ["gemini/gemini-2.0-flash"]
+SUPPORTED_MODELS = [
+    "gemini/gemini-2.0-flash",
+    "gemini/gemini-1.5-flash",
+]
+
+# SUPPORTED_MODELS = [
+#     "groq/qwen/qwen3-32b"
+# ]
 
 
 class LLMService:
@@ -19,7 +26,7 @@ class LLMService:
     Instances are managed by the get_llm_service factory function.
     """
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, max_tokens: int = None, num_retries: int = 3):
         if model_name not in SUPPORTED_MODELS:
             raise ValueError(
                 f"Model '{model_name}' is not supported. Please choose from: {SUPPORTED_MODELS}"
@@ -28,7 +35,10 @@ class LLMService:
         logging.info(f"Initializing LLMService for model: {model_name}")
         self.model = model_name
         self.temperature = 0.2
-        self.max_tokens = 1024
+        self.num_retries = num_retries
+
+        if max_tokens and max_tokens > 0:
+            self.max_tokens = max_tokens
 
 
     def get_response(self, user_prompt: str, system_prompt: str = None) -> str | None:
@@ -47,13 +57,18 @@ class LLMService:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": user_prompt})
 
+        # Define the list of fallback models
+        fallback_models = [m for m in SUPPORTED_MODELS if m != self.model]
+
         try:
             logging.info(f"Sending request to LLM model: {self.model}")
             response = litellm.completion(
                 model=self.model,
                 messages=messages,
-                max_tokens=self.max_tokens,
+                max_tokens=self.max_tokens if hasattr(self, "max_tokens") else None,
                 temperature=self.temperature,
+                num_retries=self.num_retries,
+                # fallbacks=fallback_models,
             )
             return response.choices[0].message.content
         except Exception as e:

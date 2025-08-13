@@ -1,0 +1,41 @@
+db
+prs:
+_id
+user_id
+pr_number
+pr_url
+author
+title
+desc
+history_ids
+
+history:
+_id
+pr_id
+slides: [
+    {   
+        slide_id: normal numbers or slide numbers
+        slide_json: []
+        slide_code: [// raw code of that slides]
+    }
+]
+relevent_context
+
+
+flow:
+init ui : step 1: pr 
+          step 2: range of commits
+          step 3: show generated context ask user for confirmaiton or edit it accordingly 
+          step 4: onec cofirma genarte the slide content
+          step 5: shows the slides chat or edit
+          step 6: export
+           
+
+// UI
+ok can you edit slide 1 to thishisthis history
+
+//backend
+tools
+1. getContext
+2. generateSlides
+3. editSlides

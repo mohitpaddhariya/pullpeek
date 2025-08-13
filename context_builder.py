@@ -1,3 +1,14 @@
+'''
+    @file: context-builder.py
+    @brief: This module orchestrates the process of building a context blueprint from a GitHub PR.
+    It fetches PR metadata, commits, generates diffs, cleans them, and uses AI to summarize changes.
+    
+    @usage:
+    1. Initialize the ContextBuilder with a PR URL and optional GitHub token.
+    2. Call the `build()` method to run the entire process.
+    3. The final context blueprint is returned as a JSON string.
+'''
+
 import logging
 import os
 import re
@@ -11,10 +22,11 @@ from github.Repository import Repository
 
 # --- Import utilities and prompts ---
 from llm_utils import get_llm_service
-from prompts import PROMPT_LIBRARY, EXAMPLE_CHANGE_DESCRIPTION
+from prompts import PROMPT_LIBRARY
 
 # --- Import Pydantic ---
 from pydantic import BaseModel, Field
+import json
 
 
 # --- Pydantic Schemas for Validation ---
@@ -29,6 +41,7 @@ class CommitModel(BaseModel):
 class PRMetadataModel(BaseModel):
     title: str
     author: str
+    description: Optional[str] = None # Optional description
     url: str
 
 class ChangesModel(BaseModel):
@@ -137,7 +150,7 @@ class ContextBuilder:
             pr = self.repo.get_pull(int(pr_number))
             commits_paginated_list = pr.get_commits()
 
-            self.pr_metadata = {'title': pr.title, 'author': pr.user.login, 'url': pr.html_url}
+            self.pr_metadata = {'title': pr.title, 'author': pr.user.login, 'description': pr.body, 'url': pr.html_url}
             for commit in commits_paginated_list:
                 self.all_commits.append({
                     'sha': commit.sha, 'short_sha': commit.sha[:7], 'message': commit.commit.message,
@@ -178,7 +191,7 @@ class ContextBuilder:
         prompt_template = PROMPT_LIBRARY.get(task)
         if prompt_template and self.cleaned_diff:
             llm = get_llm_service()
-            user_prompt = prompt_template["user"].format(cleaned_diff=self.cleaned_diff)
+            user_prompt = prompt_template["user"].format(pr_description=self.pr_metadata.get("description", ""), cleaned_diff=self.cleaned_diff)
             self.change_description = llm.get_response(user_prompt, prompt_template["system"])
 
     def _build_final_json(self):
@@ -251,17 +264,23 @@ def clean_diff_text(raw_diff: str):
 #     # --- Example Usage ---
 #     # 1. Ensure API keys are set as environment variables (GITHUB_TOKEN, GEMINI_API_KEY, etc.)
     
-#     pr_to_analyze = "https://github.com/monkeytypegame/monkeytype/pull/6698"
+#     pr_to_analyze = "https://github.com/apache/beam/pull/35564"
     
 #     # 2. Create an instance of the builder
 #     builder = ContextBuilder(pr_url=pr_to_analyze)
     
 #     # 3. Run the entire process with a single method call
 #     final_json_blueprint = builder.build()
-    
+
 #     if final_json_blueprint:
+        
+#         # store the final blueprint in context.json
+#         with open("context.json", "w") as f:
+#             f.write(final_json_blueprint)
+        
 #         print("\n✅ --- Final Context Blueprint Generated --- ✅")
-#         print(final_json_blueprint)
+#         blueprint_dict = json.loads(final_json_blueprint)
+#         print(blueprint_dict["changes"]["ai_summary"])
 #         # You can now save this to a file or pass it to the next service.
 #     else:
 #         print("\n❌ Failed to build the context blueprint. Check logs for details.")
