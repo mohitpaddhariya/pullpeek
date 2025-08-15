@@ -3,8 +3,8 @@
   "slides": [
     {
       "slide_type": "title",
-      "title": "Increase SQL Package Test Coverage",
-      "subtitle": "From 35% to 70%",
+      "title": "Increasing SQL Package Test Coverage",
+      "subtitle": "PR #21384: From 35% to 75%",
       "content": [],
       "code_block": null,
       "speaker_notes": null
@@ -14,8 +14,9 @@
       "title": "Overview",
       "subtitle": null,
       "content": [
-        "Added comprehensive unit tests for the `sql` package.",
-        "Focused on option handling and configuration."
+        "Comprehensive unit tests added to the `sql` package.",
+        "Significantly increased code coverage.",
+        "Tests cover output type handling, option validation, and application of multiple options."
       ],
       "code_block": null,
       "speaker_notes": null
@@ -25,11 +26,10 @@
       "title": "Key Changes",
       "subtitle": null,
       "content": [
-        "Added `TestMultipleOptions` to verify correct application of multiple options.",
-        "Enhanced `TestOptions_Add` with improved assertions using `cmp.Diff`.",
-        "Introduced custom comparer for `typex.FullType`.",
-        "Updated assertions to use `cmp.Diff` for detailed comparison of `options` structs.",
-        "Removed outdated entries from `.gitignore`."
+        "Added `TestOutputType`: Verifies correct handling of the `OutputType` option (with and without components).",
+        "Added `TestTransform`: Ensures `Transform` function panics when output type is not specified.",
+        "Added `TestMultipleOptions`: Validates correct application of multiple options (Input, Dialect, ExpansionAddr, OutputType).",
+        "Increased code coverage from 35% to 75%."
       ],
       "code_block": null,
       "speaker_notes": null
@@ -39,8 +39,8 @@
       "title": "Impact",
       "subtitle": null,
       "content": [
-        "Increased test coverage for the `sql` package.",
-        "Improved reliability and maintainability of the code.",
+        "Improved reliability and maintainability of the `sql` package.",
+        "Increased test coverage.",
         "No breaking changes introduced."
       ],
       "code_block": null,
@@ -48,14 +48,14 @@
     },
     {
       "slide_type": "code",
-      "title": "Improved Assertions with cmp.Diff",
+      "title": "Example: TestMultipleOptions",
       "subtitle": null,
       "content": [
-        "Using cmp.Diff for clearer error messages in tests."
+        "Demonstrates applying and verifying multiple options simultaneously."
       ],
       "code_block": {
         "language": "go",
-        "code": "if d := cmp.Diff(expected, o.outType, opts); d != \"\" {\n\t\t\t\tt.Errorf(\"OutputType() failed: (-want, +got)\\n%s\\\", d)\n\t\t\t}"
+        "code": "func TestMultipleOptions(t *testing.T) {\n\to := &options{\n\t\tinputs: make(map[string]beam.PCollection),\n\t}\n\n\tp := beam.NewPipeline()\n\ts := p.Root()\n\tcol := beam.Create(s, 1, 2, 3)\n\tname := \"test\"\n\tdialect := \"zetasql\"\n\taddr := \"localhost:8080\"\n\ttyp := reflect.TypeOf(int64(0))\n\tcustomOpt := sqlx.Option{Urn: \"test\"}\n\n\t// Apply multiple options\n\topts := []Option{\n\t\tInput(name, col),\n\t\tDialect(dialect),\n\t\tExpansionAddr(addr),\n\t\tOutputType(typ),\n\t}\n\n\t// Apply all options\n\tfor _, opt := range opts {\n\t\topt(o)\n\t}\n\to.Add(customOpt)\n\n\t// Verify all fields\n\tif _, ok := o.inputs[name]; !ok {\n\t\tt.Error(\"Input option not applied correctly\")\n\t}\n\tif o.dialect != dialect {\n\t\tt.Error(\"Dialect option not applied correctly\")\n\t}\n\tif o.expansionAddr != addr {\n\t\tt.Error(\"ExpansionAddr option not applied correctly\")\n\t}\n\tif !reflect.DeepEqual(o.outType, typex.New(typ)) {\n\t\tt.Error(\"OutputType option not applied correctly\")\n\t}\n\tif len(o.customs) != 1 {\n\t\tt.Error(\"Custom option not applied correctly\")\n\t}\n}"
       },
       "speaker_notes": null
     }
